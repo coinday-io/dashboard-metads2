@@ -6,11 +6,11 @@ import { currency } from '@/lib/format';
 import { CalendarDays, TrendingDown, TrendingUp } from 'lucide-react';
 
 const metricCards = [
-  { label: 'CTR (Link)', value: `${dashboardMetrics.ctr}%`, trend: '↑ 18.6%', up: true },
-  { label: 'CPC (Link)', value: currency(dashboardMetrics.cpc), trend: '↓ 8.7%', up: false },
-  { label: 'Clicks (Link)', value: dashboardMetrics.clicks.toLocaleString(), trend: '↑ 21.3%', up: true },
-  { label: 'Conversions', value: dashboardMetrics.conversions.toLocaleString(), trend: '↑ 24.8%', up: true },
-  { label: 'ROAS (Purchase)', value: dashboardMetrics.roas.toFixed(2), trend: '↑ 31.5%', up: true },
+  { label: 'CTR (Link)', value: `${dashboardMetrics.ctr}%`, trend: '↑ 18.6%', direction: 'up' as const, favorable: true },
+  { label: 'CPC (Link)', value: currency(dashboardMetrics.cpc), trend: '↓ 8.7%', direction: 'down' as const, favorable: true },
+  { label: 'Clicks (Link)', value: dashboardMetrics.clicks.toLocaleString(), trend: '↑ 21.3%', direction: 'up' as const, favorable: true },
+  { label: 'Conversions', value: dashboardMetrics.conversions.toLocaleString(), trend: '↑ 24.8%', direction: 'up' as const, favorable: true },
+  { label: 'ROAS (Purchase)', value: dashboardMetrics.roas.toFixed(2), trend: '↑ 31.5%', direction: 'up' as const, favorable: true },
 ];
 
 export default function AdminOverview() {
@@ -29,7 +29,7 @@ export default function AdminOverview() {
             <Card key={metric.label} className="p-4">
               <p className="text-xs font-medium text-slate-500">{metric.label}</p>
               <div className="mt-2 text-3xl font-semibold tracking-tight">{metric.value}</div>
-              <div className={`mt-1 flex items-center gap-1 text-xs font-semibold ${metric.up ? 'text-emerald-600' : 'text-emerald-600'}`}>{metric.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}{metric.trend}</div>
+              <div className={`mt-1 flex items-center gap-1 text-xs font-semibold ${metric.favorable ? 'text-emerald-600' : 'text-red-600'}`}>{metric.direction === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}{metric.trend}</div>
               <svg viewBox="0 0 120 30" className="mt-1 h-8 w-full"><polyline fill="none" stroke="#0866ff" strokeWidth="2" points="0,24 18,21 30,16 44,18 57,15 70,20 86,16 100,18 112,10 120,14" /></svg>
             </Card>
           ))}
