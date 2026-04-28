@@ -55,6 +55,8 @@ function hashIp(ip: string, salt: string) {
   return createHash('sha256').update(`${salt}:${ip}`).digest('hex').slice(0, 32);
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = (await getProductBySlug(slug)) ?? findProductBySlug(slug);
@@ -93,8 +95,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     try {
+      const productId = (product as unknown as { id: string }).id;
       await supabase.from('click_events').insert({
-        product_id: (product as unknown as { id: string }).id ?? null,
+        product_id: productId && UUID_PATTERN.test(productId) ? productId : null,
         product_slug: product.slug,
         landing_page_slug: lpSlug,
         redirect_slug: slug,

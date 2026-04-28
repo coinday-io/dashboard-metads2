@@ -203,7 +203,7 @@ export async function getLandingPageBySlug(slug: string): Promise<{ page: Landin
   const { data: links } = await sb.from('landing_page_products').select('product_id, sort_order').eq('landing_page_id', (page as LandingRow).id).order('sort_order', { ascending: true });
   const productIds = (links ?? []).map((l: { product_id: string }) => l.product_id);
   if (!productIds.length) return { page: mapLanding(page as LandingRow, []), products: [] };
-  const { data: productRows } = await sb.from('affiliate_products').select('*').in('id', productIds);
+  const { data: productRows } = await sb.from('affiliate_products').select('*').in('id', productIds).eq('status', 'active');
   const productList = (productRows ?? []).map((row: ProductRow) => mapProduct(row));
   productList.sort((a, b) => productIds.indexOf(a.id) - productIds.indexOf(b.id));
   return { page: mapLanding(page as LandingRow, productIds), products: productList };
