@@ -80,10 +80,21 @@ Under **Settings → Environment Variables**, add the following for **all three 
 | `IP_HASH_SALT` | run `openssl rand -hex 32` and paste the result |
 | `API_KEY_SECRET` | run `openssl rand -hex 32` and paste the result |
 
-### 3. Make sure Vercel deploys the right branch
+### 3. Make sure Vercel detects the framework as Next.js
+Under **Settings → Build & Development Settings**:
+- **Framework Preset**: `Next.js`
+- **Build Command**: leave blank (uses `next build` automatically)
+- **Output Directory**: leave blank (Next.js uses `.next`, not `public`)
+- **Install Command**: leave blank (uses `npm install`)
+
+The repo also ships a `vercel.json` that pins these values, so a fresh import should work without any manual settings.
+
+If you previously imported the project as a static site you may have an explicit `Output Directory: public` saved — clear it (or delete the project and re-import) so Vercel uses `.next`.
+
+### 4. Make sure Vercel deploys the right branch
 The default branch must contain the application code. After this PR is merged into `main` (or whichever branch you configure as default in **Settings → Git → Production Branch**), Vercel will build and deploy automatically.
 
-### 4. Re-deploy
+### 5. Re-deploy
 Vercel will redeploy automatically on every push. To trigger a redeploy without a new commit, click **Deployments → ⋯ → Redeploy** on the latest deployment.
 
 ---

@@ -1,4 +1,4 @@
-import { apiError, created, ok, paginate } from '@/lib/api';
+import { apiError, created, ok, paginate, readJson } from '@/lib/api';
 import { listLandingPages } from '@/lib/db';
 import { slugify } from '@/lib/format';
 import { getServerSupabase, getServiceSupabase } from '@/lib/supabase/server';
@@ -26,7 +26,9 @@ export async function POST(request: Request) {
     const { data: { user } } = await auth.auth.getUser();
     if (!user) return apiError('UNAUTHORIZED', 'Sign in required', 401);
   }
-  const parsed = schema.safeParse(await request.json());
+  const body = await readJson(request);
+  if (!body.ok) return body.response;
+  const parsed = schema.safeParse(body.data);
   if (!parsed.success) return apiError('VALIDATION_ERROR', 'Invalid request body', 422, parsed.error.issues);
   const data = parsed.data;
   const slug = data.slug || slugify(data.title);

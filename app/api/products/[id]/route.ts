@@ -1,4 +1,4 @@
-import { apiError, ok } from '@/lib/api';
+import { apiError, ok, readJson } from '@/lib/api';
 import { getServerSupabase, getServiceSupabase } from '@/lib/supabase/server';
 import { z } from 'zod';
 
@@ -24,7 +24,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const authed = await requireAuth();
   if (authed === false) return apiError('UNAUTHORIZED', 'Sign in required', 401);
   const { id } = await params;
-  const parsed = updateSchema.safeParse(await request.json());
+  const body = await readJson(request);
+  if (!body.ok) return body.response;
+  const parsed = updateSchema.safeParse(body.data);
   if (!parsed.success) return apiError('VALIDATION_ERROR', 'Invalid request body', 422, parsed.error.issues);
   const supabase = getServiceSupabase();
   if (!supabase) return apiError('SUPABASE_NOT_CONFIGURED', 'Set SUPABASE_SERVICE_ROLE_KEY to enable writes.', 503);

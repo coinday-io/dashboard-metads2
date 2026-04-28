@@ -232,8 +232,8 @@ async function aggregateLandingStats(slugs: string[]) {
     const slug = row.landing_page_slug;
     if (!slug) continue;
     stats[slug] ??= { views: 0, buttonClicks: 0 };
-    stats[slug].buttonClicks += 1;
-    if (!row.is_duplicate && !row.is_bot) stats[slug].views += 1;
+    stats[slug].views += 1;
+    if (!row.is_duplicate && !row.is_bot) stats[slug].buttonClicks += 1;
   }
   return stats;
 }

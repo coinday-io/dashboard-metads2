@@ -10,6 +10,22 @@ const BOT_PATTERN = /(bot|crawl|spider|slurp|http\s?client|curl|wget|python-requ
 const DUP_WINDOW_MS = 30 * 1000;
 
 const recentClicks = new Map<string, number>();
+const RECENT_CLICKS_MAX = 5_000;
+let recentClicksWrites = 0;
+
+function pruneRecentClicks(now: number) {
+  for (const [key, ts] of recentClicks) {
+    if (now - ts > DUP_WINDOW_MS) recentClicks.delete(key);
+  }
+  if (recentClicks.size > RECENT_CLICKS_MAX) {
+    const overflow = recentClicks.size - RECENT_CLICKS_MAX;
+    let removed = 0;
+    for (const key of recentClicks.keys()) {
+      if (removed++ >= overflow) break;
+      recentClicks.delete(key);
+    }
+  }
+}
 
 function classifyDevice(ua: string) {
   const lower = ua.toLowerCase();
@@ -70,6 +86,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const last = recentClicks.get(dupKey) ?? 0;
     const isDuplicate = now - last < DUP_WINDOW_MS;
     recentClicks.set(dupKey, now);
+    recentClicksWrites += 1;
+    if (recentClicksWrites >= 100) {
+      recentClicksWrites = 0;
+      pruneRecentClicks(now);
+    }
 
     try {
       await supabase.from('click_events').insert({
