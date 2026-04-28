@@ -4,7 +4,7 @@ import { getDashboardMetrics } from '@/lib/db';
 export async function GET() {
   const { metrics } = await getDashboardMetrics();
   return ok({
-    spend: 0,
+    spend: metrics.spend,
     link_clicks: metrics.clicks,
     redirect_clicks: metrics.redirectClicks,
     affiliate_clicks: metrics.affiliateClicks,

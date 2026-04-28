@@ -28,7 +28,9 @@ export function LoginForm() {
       setError(signInError.message);
       return;
     }
-    router.replace(params.get('next') ?? '/admin');
+    const next = params.get('next');
+    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/admin';
+    router.replace(safeNext);
     router.refresh();
   }
 

@@ -346,6 +346,7 @@ export async function getDashboardMetrics() {
       redirectClicks,
       costPerRedirectClick: Math.round(costPerRedirectClick * 100) / 100,
       costPerAffiliateClick: Math.round(costPerAffiliateClick * 100) / 100,
+      spend: Math.round(totalSpend * 100) / 100,
       duplicateRate: Math.round(duplicateRate * 10) / 10,
       botRate: Math.round(botRate * 10) / 10,
     },
