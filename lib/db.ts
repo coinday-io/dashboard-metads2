@@ -350,8 +350,8 @@ export async function getDashboardMetrics() {
       duplicateRate: Math.round(duplicateRate * 10) / 10,
       botRate: Math.round(botRate * 10) / 10,
     },
-    campaigns: campaigns.length ? campaigns : mockCampaigns,
-    chart: chart.length ? chart : mockChartPoints,
+    campaigns: campaigns.length ? campaigns : [],
+    chart,
   };
 }
 

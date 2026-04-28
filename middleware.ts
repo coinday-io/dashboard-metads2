@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   const isAdmin = pathname.startsWith('/admin');
   const isApi = pathname.startsWith('/api');
   const isLogin = pathname === '/admin/login';
-  const isPublicApi = isApi && PUBLIC_API_PREFIXES.some((prefix) => pathname === prefix.replace(/\/$/, '') || pathname.startsWith(prefix));
+  const isPublicApi = isApi && PUBLIC_API_PREFIXES.some((prefix) => prefix.endsWith('/') ? pathname.startsWith(prefix) : pathname === prefix);
   const isProtected = isAdmin || (isApi && !isPublicApi);
   if (!isProtected) return NextResponse.next();
 
