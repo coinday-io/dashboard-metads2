@@ -44,7 +44,8 @@ export async function POST(request: Request) {
   if (error || !page) return apiError('INSERT_FAILED', error?.message ?? 'Insert failed', 500);
   if (data.product_ids.length) {
     const links = data.product_ids.map((product_id, index) => ({ landing_page_id: page.id, product_id, sort_order: index }));
-    await supabase.from('landing_page_products').insert(links);
+    const { error: linkError } = await supabase.from('landing_page_products').insert(links);
+    if (linkError) return apiError('INSERT_FAILED', linkError.message, 500);
   }
   return created({ ...page, public_url: `/rekomendasi/${slug}`, product_ids: data.product_ids });
 }
