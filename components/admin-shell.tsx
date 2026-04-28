@@ -1,4 +1,4 @@
-import { BarChart3, Bell, Blocks, ChevronDown, CreditCard, HelpCircle, Home, Megaphone, MousePointer2, PanelLeftClose, Crosshair, Settings, Share2, Users } from 'lucide-react';
+import { BarChart3, Bell, Blocks, ChevronDown, CreditCard, HelpCircle, Home, LogOut, Megaphone, MousePointer2, PanelLeftClose, Crosshair, Settings, Share2, Users } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Button } from './ui';
@@ -35,6 +35,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto border-t border-white/10 pt-4">
           <Link href="/admin/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-white/10"><HelpCircle className="h-5 w-5" />Help</Link>
+          <form action="/api/auth/signout" method="post"><button type="submit" className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-white/10"><LogOut className="h-5 w-5" />Sign out</button></form>
           <div className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200"><PanelLeftClose className="h-5 w-5" />Collapse</div>
         </div>
       </aside>

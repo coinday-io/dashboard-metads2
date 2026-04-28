@@ -1,9 +1,19 @@
 import { ok } from '@/lib/api';
-import { campaignReports, dashboardMetrics } from '@/lib/data';
+import { getDashboardMetrics } from '@/lib/db';
 
-export function GET() {
-  const spend = campaignReports.reduce((sum, row) => sum + row.spend, 0);
-  const redirectClicks = campaignReports.reduce((sum, row) => sum + row.redirectClicks, 0);
-  const affiliateClicks = campaignReports.reduce((sum, row) => sum + row.affiliateClicks, 0);
-  return ok({ spend, link_clicks: dashboardMetrics.clicks, redirect_clicks: redirectClicks, affiliate_clicks: affiliateClicks, cost_per_redirect_click: spend / redirectClicks, cost_per_affiliate_click: spend / affiliateClicks, duplicate_rate: dashboardMetrics.duplicateRate, bot_rate: dashboardMetrics.botRate, roas: dashboardMetrics.roas });
+export async function GET() {
+  const { metrics } = await getDashboardMetrics();
+  return ok({
+    spend: 0,
+    link_clicks: metrics.clicks,
+    redirect_clicks: metrics.redirectClicks,
+    affiliate_clicks: metrics.affiliateClicks,
+    cost_per_redirect_click: metrics.cpc,
+    cost_per_affiliate_click: metrics.cpc,
+    duplicate_rate: metrics.duplicateRate,
+    bot_rate: metrics.botRate,
+    roas: metrics.roas,
+    ctr: metrics.ctr,
+    cpc: metrics.cpc,
+  });
 }

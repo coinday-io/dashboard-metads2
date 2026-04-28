@@ -1,6 +1,7 @@
 import { ok } from '@/lib/api';
-import { campaignReports } from '@/lib/data';
+import { getDashboardMetrics } from '@/lib/db';
 
-export function GET() {
-  return ok(campaignReports);
+export async function GET() {
+  const { campaigns } = await getDashboardMetrics();
+  return ok(campaigns);
 }

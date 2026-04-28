@@ -1,19 +1,21 @@
 import { BuilderPreview } from '@/components/builder';
 import { PerformanceChart } from '@/components/charts';
 import { Badge, Card, Select, Toggle } from '@/components/ui';
-import { campaignReports, dashboardMetrics } from '@/lib/data';
+import { getDashboardMetrics } from '@/lib/db';
 import { currency } from '@/lib/format';
 import { CalendarDays, TrendingDown, TrendingUp } from 'lucide-react';
 
-const metricCards = [
-  { label: 'CTR (Link)', value: `${dashboardMetrics.ctr}%`, trend: '↑ 18.6%', direction: 'up' as const, favorable: true },
-  { label: 'CPC (Link)', value: currency(dashboardMetrics.cpc), trend: '↓ 8.7%', direction: 'down' as const, favorable: true },
-  { label: 'Clicks (Link)', value: dashboardMetrics.clicks.toLocaleString(), trend: '↑ 21.3%', direction: 'up' as const, favorable: true },
-  { label: 'Conversions', value: dashboardMetrics.conversions.toLocaleString(), trend: '↑ 24.8%', direction: 'up' as const, favorable: true },
-  { label: 'ROAS (Purchase)', value: dashboardMetrics.roas.toFixed(2), trend: '↑ 31.5%', direction: 'up' as const, favorable: true },
-];
+export const dynamic = 'force-dynamic';
 
-export default function AdminOverview() {
+export default async function AdminOverview() {
+  const { metrics, campaigns, chart } = await getDashboardMetrics();
+  const metricCards = [
+    { label: 'CTR (Link)', value: `${metrics.ctr}%`, trend: '↑ 18.6%', direction: 'up' as const, favorable: true },
+    { label: 'CPC (Link)', value: currency(metrics.cpc), trend: '↓ 8.7%', direction: 'down' as const, favorable: true },
+    { label: 'Clicks (Link)', value: metrics.clicks.toLocaleString(), trend: '↑ 21.3%', direction: 'up' as const, favorable: true },
+    { label: 'Conversions', value: metrics.conversions.toLocaleString(), trend: '↑ 24.8%', direction: 'up' as const, favorable: true },
+    { label: 'ROAS (Purchase)', value: metrics.roas.toFixed(2), trend: '↑ 31.5%', direction: 'up' as const, favorable: true },
+  ];
   return (
     <div className="grid min-h-[calc(100vh-80px)] grid-cols-1 2xl:grid-cols-[1fr_1.2fr]">
       <section className="border-r border-slate-200 p-7">
@@ -35,11 +37,11 @@ export default function AdminOverview() {
           ))}
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.25fr_.75fr]">
-          <Card className="p-5"><h2 className="mb-3 font-bold">Performance Over Time</h2><PerformanceChart /></Card>
+          <Card className="p-5"><h2 className="mb-3 font-bold">Performance Over Time</h2><PerformanceChart points={chart} /></Card>
           <Card className="p-5">
             <div className="mb-4 flex items-center justify-between"><h2 className="font-bold">Top Campaigns</h2><Select><option>By ROAS</option><option>By Clicks</option></Select></div>
             <div className="space-y-4">
-              {campaignReports.map((campaign) => <div key={campaign.name}><div className="mb-1 flex justify-between text-xs font-semibold"><span>{campaign.name}</span><span>{campaign.roas.toFixed(2)}</span></div><div className="h-1.5 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${campaign.roas * 17}%` }} /></div></div>)}
+              {campaigns.map((campaign) => <div key={campaign.name}><div className="mb-1 flex justify-between text-xs font-semibold"><span>{campaign.name}</span><span>{campaign.roas.toFixed(2)}</span></div><div className="h-1.5 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${Math.min(campaign.roas * 17, 100)}%` }} /></div></div>)}
             </div>
             <button className="mt-5 w-full rounded-lg border border-slate-200 py-2 text-sm font-semibold text-meta">View all campaigns</button>
           </Card>
@@ -50,14 +52,13 @@ export default function AdminOverview() {
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-slate-50 text-xs text-slate-500"><tr>{['', 'Campaign', 'Delivery', 'Budget', 'Results', 'CTR (Link)', 'CPC (Link)', 'ROAS (Purchase)'].map((head) => <th key={head} className="px-4 py-3 font-semibold">{head}</th>)}</tr></thead>
               <tbody className="divide-y divide-slate-100">
-                {campaignReports.map((campaign) => <tr key={campaign.name}><td className="px-4 py-3"><Toggle active={campaign.delivery === 'Active'} /></td><td className="px-4 py-3 font-semibold text-meta">{campaign.name}</td><td className="px-4 py-3"><Badge tone={campaign.delivery === 'Active' ? 'green' : 'gray'}>{campaign.delivery}</Badge></td><td className="px-4 py-3">{currency(campaign.budget)}<div className="text-xs text-slate-400">Daily</div></td><td className="px-4 py-3">{campaign.conversions}<div className="text-xs text-slate-400">Conversions</div></td><td className="px-4 py-3">{campaign.ctr.toFixed(2)}%</td><td className="px-4 py-3">{currency(campaign.cpc)}</td><td className="px-4 py-3">{campaign.roas.toFixed(2)}</td></tr>)}
+                {campaigns.map((campaign) => <tr key={campaign.name}><td className="px-4 py-3"><Toggle active={campaign.delivery === 'Active'} /></td><td className="px-4 py-3 font-semibold text-meta">{campaign.name}</td><td className="px-4 py-3"><Badge tone={campaign.delivery === 'Active' ? 'green' : 'gray'}>{campaign.delivery}</Badge></td><td className="px-4 py-3">{currency(campaign.budget)}</td><td className="px-4 py-3">{campaign.conversions.toLocaleString()} conv.</td><td className="px-4 py-3">{campaign.ctr.toFixed(2)}%</td><td className="px-4 py-3">{currency(campaign.cpc)}</td><td className="px-4 py-3">{campaign.roas.toFixed(2)}</td></tr>)}
               </tbody>
             </table>
           </div>
-          <div className="p-4 text-center text-sm font-semibold text-meta">View all campaigns</div>
         </Card>
       </section>
-      <BuilderPreview />
+      <section className="p-7"><BuilderPreview /></section>
     </div>
   );
 }

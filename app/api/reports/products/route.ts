@@ -1,6 +1,7 @@
 import { ok } from '@/lib/api';
-import { products } from '@/lib/data';
+import { listProducts } from '@/lib/db';
 
-export function GET() {
+export async function GET() {
+  const products = await listProducts();
   return ok(products.map((product) => ({ title: product.title, slug: product.slug, clicks: product.totalClicks, affiliate_clicks: product.affiliateClicks, conversion_rate: product.conversionRate })));
 }

@@ -1,23 +1,54 @@
-import { created, ok, paginate } from '@/lib/api';
-import { products } from '@/lib/data';
+import { apiError, created, ok, paginate } from '@/lib/api';
+import { listProducts } from '@/lib/db';
 import { slugify } from '@/lib/format';
+import { getServerSupabase, getServiceSupabase } from '@/lib/supabase/server';
 import { z } from 'zod';
 
-const schema = z.object({ title: z.string().min(1), slug: z.string().optional(), destination_url: z.string().url(), source_platform: z.string().default('shopee'), status: z.enum(['active', 'inactive']).default('active') });
+const schema = z.object({
+  title: z.string().min(1),
+  slug: z.string().optional(),
+  description: z.string().optional(),
+  destination_url: z.string().url(),
+  image_url: z.string().url().optional().or(z.literal('')),
+  category: z.string().optional(),
+  source_platform: z.string().default('shopee'),
+  status: z.enum(['active', 'inactive']).default('active'),
+});
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const url = new URL(request.url);
   const page = Number(url.searchParams.get('page') ?? 1);
   const pageSize = Number(url.searchParams.get('pageSize') ?? 25);
   const q = url.searchParams.get('q')?.toLowerCase();
-  const rows = q ? products.filter((product) => product.title.toLowerCase().includes(q) || product.slug.includes(q)) : products;
-  const { items, meta } = paginate(rows.map((product) => ({ ...product, redirect_url: `/go/${product.slug}` })), page, pageSize);
+  const all = await listProducts();
+  const filtered = q ? all.filter((product) => product.title.toLowerCase().includes(q) || product.slug.includes(q)) : all;
+  const enriched = filtered.map((product) => ({ ...product, redirect_url: `/go/${product.slug}` }));
+  const { items, meta } = paginate(enriched, page, pageSize);
   return ok(items, meta);
 }
 
 export async function POST(request: Request) {
+  const auth = await getServerSupabase();
+  if (auth) {
+    const { data: { user } } = await auth.auth.getUser();
+    if (!user) return apiError('UNAUTHORIZED', 'Sign in required', 401);
+  }
   const parsed = schema.safeParse(await request.json());
-  if (!parsed.success) return Response.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parsed.error.issues } }, { status: 422 });
+  if (!parsed.success) return apiError('VALIDATION_ERROR', 'Invalid request body', 422, parsed.error.issues);
   const data = parsed.data;
-  return created({ id: crypto.randomUUID(), title: data.title, slug: data.slug ?? slugify(data.title), destination_url: data.destination_url, source_platform: data.source_platform, status: data.status, redirect_url: `/go/${data.slug ?? slugify(data.title)}` });
+  const slug = data.slug || slugify(data.title);
+  const supabase = getServiceSupabase();
+  if (!supabase) return apiError('SUPABASE_NOT_CONFIGURED', 'Set SUPABASE_SERVICE_ROLE_KEY to enable writes.', 503);
+  const { data: row, error } = await supabase.from('affiliate_products').insert({
+    title: data.title,
+    slug,
+    description: data.description ?? null,
+    image_url: data.image_url || null,
+    destination_url: data.destination_url,
+    category: data.category ?? null,
+    source_platform: data.source_platform,
+    status: data.status,
+  }).select().single();
+  if (error || !row) return apiError('INSERT_FAILED', error?.message ?? 'Insert failed', 500);
+  return created({ ...row, redirect_url: `/go/${slug}` });
 }
