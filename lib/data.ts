@@ -55,6 +55,8 @@ export const dashboardMetrics = {
   roas: 4.32,
   affiliateClicks: 10789,
   redirectClicks: 12498,
+  costPerRedirectClick: 0.32,
+  costPerAffiliateClick: 0.37,
   duplicateRate: 3.6,
   botRate: 1.2,
 };

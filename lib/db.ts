@@ -1,7 +1,28 @@
 import 'server-only';
 import { adSpendReports as mockAdSpend, campaignReports as mockCampaigns, chartPoints as mockChartPoints, clickEvents as mockClicks, dashboardMetrics as mockMetrics, landingPages as mockLandings, products as mockProducts } from './data';
-import { getServiceSupabase, isServiceRoleConfigured } from './supabase/server';
+import { getServiceSupabase } from './supabase/server';
 import type { AdSpendReport, ClickEvent, LandingPage, Product } from './types';
+
+const PAGE_SIZE = 1000;
+const MAX_ROWS = 100_000;
+
+type PagedResponse = { data: unknown[] | null; error: { message: string } | null };
+
+async function fetchAllPages<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<PagedResponse>,
+): Promise<T[]> {
+  // Paginate through Supabase's default 1000-row cap. Hard ceiling protects memory.
+  const collected: T[] = [];
+  let offset = 0;
+  while (offset < MAX_ROWS) {
+    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
+    if (error || !data) break;
+    collected.push(...(data as T[]));
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return collected;
+}
 
 type ProductRow = {
   id: string;
@@ -211,8 +232,10 @@ async function aggregateClickTotalsBySlug(slugs: string[]) {
   if (!slugs.length) return totals;
   const sb = getServiceSupabase();
   if (!sb) return totals;
-  const { data } = await sb.from('click_events').select('product_slug, is_duplicate, is_bot').in('product_slug', slugs);
-  for (const row of (data ?? []) as { product_slug: string; is_duplicate: boolean; is_bot: boolean }[]) {
+  const data = await fetchAllPages<{ product_slug: string; is_duplicate: boolean; is_bot: boolean }>(
+    (from, to) => sb.from('click_events').select('product_slug, is_duplicate, is_bot').in('product_slug', slugs).range(from, to),
+  );
+  for (const row of data) {
     const slug = row.product_slug;
     if (!slug) continue;
     totals[slug] ??= { totalClicks: 0, affiliateClicks: 0 };
@@ -227,8 +250,10 @@ async function aggregateLandingStats(slugs: string[]) {
   if (!slugs.length) return stats;
   const sb = getServiceSupabase();
   if (!sb) return stats;
-  const { data } = await sb.from('click_events').select('landing_page_slug, is_duplicate, is_bot').in('landing_page_slug', slugs);
-  for (const row of (data ?? []) as { landing_page_slug: string; is_duplicate: boolean; is_bot: boolean }[]) {
+  const data = await fetchAllPages<{ landing_page_slug: string; is_duplicate: boolean; is_bot: boolean }>(
+    (from, to) => sb.from('click_events').select('landing_page_slug, is_duplicate, is_bot').in('landing_page_slug', slugs).range(from, to),
+  );
+  for (const row of data) {
     const slug = row.landing_page_slug;
     if (!slug) continue;
     stats[slug] ??= { views: 0, buttonClicks: 0 };
@@ -241,22 +266,27 @@ async function aggregateLandingStats(slugs: string[]) {
 export async function getDashboardMetrics() {
   const sb = getServiceSupabase();
   if (!sb) return { metrics: mockMetrics, campaigns: mockCampaigns, chart: mockChartPoints };
-  const { data: clicks } = await sb.from('click_events').select('product_slug, utm_campaign, is_duplicate, is_bot, created_at');
-  const { data: ad } = await sb.from('ad_spend_reports').select('report_date, campaign_name, utm_campaign, spend, impressions, link_clicks, landing_page_views');
-  const adRows = (ad ?? []) as AdSpendRow[];
-  const clickRows = (clicks ?? []) as { product_slug: string | null; utm_campaign: string | null; is_duplicate: boolean | null; is_bot: boolean | null; created_at: string }[];
+  const clickRows = await fetchAllPages<{ product_slug: string | null; utm_campaign: string | null; is_duplicate: boolean | null; is_bot: boolean | null; created_at: string }>(
+    (from, to) => sb.from('click_events').select('product_slug, utm_campaign, is_duplicate, is_bot, created_at').range(from, to),
+  );
+  const adRows = await fetchAllPages<AdSpendRow>(
+    (from, to) => sb.from('ad_spend_reports').select('report_date, campaign_name, utm_campaign, spend, impressions, link_clicks, landing_page_views').range(from, to),
+  );
   if (!clickRows.length && !adRows.length) return { metrics: mockMetrics, campaigns: mockCampaigns, chart: mockChartPoints };
 
   const totalSpend = adRows.reduce((sum, row) => sum + Number(row.spend ?? 0), 0);
   const totalLinkClicks = adRows.reduce((sum, row) => sum + Number(row.link_clicks ?? 0), 0);
   const totalImpressions = adRows.reduce((sum, row) => sum + Number(row.impressions ?? 0), 0);
-  const redirectClicks = clickRows.filter((c) => !c.is_duplicate && !c.is_bot).length;
+  const redirectClicks = clickRows.length;
+  const affiliateClicks = clickRows.filter((c) => !c.is_duplicate && !c.is_bot).length;
   const duplicateRate = clickRows.length ? (clickRows.filter((c) => c.is_duplicate).length / clickRows.length) * 100 : 0;
   const botRate = clickRows.length ? (clickRows.filter((c) => c.is_bot).length / clickRows.length) * 100 : 0;
   const ctr = totalImpressions ? (totalLinkClicks / totalImpressions) * 100 : 0;
   const cpc = totalLinkClicks ? totalSpend / totalLinkClicks : 0;
-  const conversions = redirectClicks;
-  const roas = totalSpend ? (conversions * 1) / totalSpend : 0;
+  const costPerRedirectClick = redirectClicks ? totalSpend / redirectClicks : 0;
+  const costPerAffiliateClick = affiliateClicks ? totalSpend / affiliateClicks : 0;
+  const conversions = affiliateClicks;
+  const roas = totalSpend ? conversions / totalSpend : 0;
 
   const campaignMap = new Map<string, { spend: number; linkClicks: number; impressions: number; redirectClicks: number; affiliateClicks: number }>();
   for (const row of adRows) {
@@ -306,7 +336,19 @@ export async function getDashboardMetrics() {
     .map(([day, v]) => ({ day, clicks: v.clicks, conversions: v.conversions, roas: v.clicks ? v.conversions / Math.max(v.clicks, 1) : 0 }));
 
   return {
-    metrics: { ctr: Math.round(ctr * 100) / 100, cpc: Math.round(cpc * 100) / 100, clicks: totalLinkClicks, conversions, roas: Math.round(roas * 100) / 100, affiliateClicks: redirectClicks, redirectClicks, duplicateRate: Math.round(duplicateRate * 10) / 10, botRate: Math.round(botRate * 10) / 10 },
+    metrics: {
+      ctr: Math.round(ctr * 100) / 100,
+      cpc: Math.round(cpc * 100) / 100,
+      clicks: totalLinkClicks,
+      conversions,
+      roas: Math.round(roas * 100) / 100,
+      affiliateClicks,
+      redirectClicks,
+      costPerRedirectClick: Math.round(costPerRedirectClick * 100) / 100,
+      costPerAffiliateClick: Math.round(costPerAffiliateClick * 100) / 100,
+      duplicateRate: Math.round(duplicateRate * 10) / 10,
+      botRate: Math.round(botRate * 10) / 10,
+    },
     campaigns: campaigns.length ? campaigns : mockCampaigns,
     chart: chart.length ? chart : mockChartPoints,
   };
@@ -326,5 +368,3 @@ export async function listApiKeys() {
   const { data } = await sb.from('api_keys').select('id, name, key_prefix, scopes, status, last_used_at, expires_at, created_at').order('created_at', { ascending: false });
   return data ?? [];
 }
-
-export { isServiceRoleConfigured };

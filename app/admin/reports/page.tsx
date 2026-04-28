@@ -11,8 +11,8 @@ export default async function ReportsPage() {
   return (
     <PageChrome title="Performance Reports" subtitle="Compare Meta clicks, redirect clicks, affiliate clicks, CPC, and ROAS." action={<Select><option>Group by campaign</option><option>Group by product</option></Select>}>
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="p-5"><p className="text-sm text-slate-500">Cost / Redirect Click</p><b className="text-3xl">{currency(metrics.cpc)}</b></Card>
-        <Card className="p-5"><p className="text-sm text-slate-500">Cost / Affiliate Click</p><b className="text-3xl">{currency(metrics.cpc)}</b></Card>
+        <Card className="p-5"><p className="text-sm text-slate-500">Cost / Redirect Click</p><b className="text-3xl">{currency(metrics.costPerRedirectClick)}</b></Card>
+        <Card className="p-5"><p className="text-sm text-slate-500">Cost / Affiliate Click</p><b className="text-3xl">{currency(metrics.costPerAffiliateClick)}</b></Card>
         <Card className="p-5"><p className="text-sm text-slate-500">Duplicate Rate</p><b className="text-3xl">{metrics.duplicateRate}%</b></Card>
         <Card className="p-5"><p className="text-sm text-slate-500">Bot Rate</p><b className="text-3xl">{metrics.botRate}%</b></Card>
       </div>
